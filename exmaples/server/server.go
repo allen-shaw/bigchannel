@@ -9,6 +9,7 @@ import (
 	"net"
 	"sync"
 
+	"github.com/allen-shaw/bigchannel/exmaples/interceptors/logging"
 	pb "github.com/allen-shaw/bigchannel/proto"
 	"google.golang.org/grpc"
 )
@@ -115,10 +116,19 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	s := grpc.NewServer()
+
+	intcptrs := prepareInterceptors()
+	s := grpc.NewServer(intcptrs)
 	pb.RegisterGreeterServer(s, &server{})
 	log.Printf("server listening at %v", lis.Addr())
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
+}
+
+func prepareInterceptors() grpc.ServerOption {
+	return grpc.ChainStreamInterceptor(
+		logging.StreamServerInterceptor(),
+		logging.StreamServerInterceptor(),
+	)
 }

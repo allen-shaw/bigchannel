@@ -1,4 +1,4 @@
-package interceptor
+package meta
 
 import (
 	"context"
@@ -14,40 +14,40 @@ type StreamInterceptor interface {
 	AfterRecvMsg(m any, err error, d time.Duration)
 }
 
-type streamServerInterceptor interface {
+type StreamServerInterceptor interface {
 	StreamInterceptor
 	BeforeCreateStream(srv any, info *grpc.StreamServerInfo)
-	AfterCreateStream(srv any, info *grpc.StreamServerInfo, err error)
+	AfterCreateStream(srv any, info *grpc.StreamServerInfo, err error) // TODO: 应该是stream close
 }
 
-type streamClientInterceptor interface {
+type StreamClientInterceptor interface {
 	StreamInterceptor
 	BeforeCreateStream()
 	AfterCreateStream(err error, d time.Duration)
 }
 
-type unaryServerInterceptor interface {
+type UnaryServerInterceptor interface {
 	BeforeRecv(req any)
 	AfterRecv(resp any, err error, d time.Duration)
 }
 
-type unaryClientInterceptor interface {
+type UnaryClientInterceptor interface {
 	BeforeRequest(req any)
 	AfterRequest(resp any, err error, d time.Duration)
 }
 
 type StreamServerInterceptorBuilder interface {
-	Build(ctx context.Context, meta Meta) (streamServerInterceptor, context.Context)
+	Build(ctx context.Context, meta Meta) (StreamServerInterceptor, context.Context)
 }
 
 type StreamClientInterceptorBuilder interface {
-	Build(ctx context.Context, meta Meta) (streamClientInterceptor, context.Context)
+	Build(ctx context.Context, meta Meta) (StreamClientInterceptor, context.Context)
 }
 
 type UnaryServerInterceptorBuilder interface {
-	Build(ctx context.Context, meta Meta) (unaryServerInterceptor, context.Context)
+	Build(ctx context.Context, meta Meta) (UnaryServerInterceptor, context.Context)
 }
 
 type UnaryClientInterceptorBuilder interface {
-	Build(ctx context.Context, meta Meta) (unaryClientInterceptor, context.Context)
+	Build(ctx context.Context, meta Meta) (UnaryClientInterceptor, context.Context)
 }

@@ -4,12 +4,13 @@ import (
 	"context"
 	"time"
 
+	"github.com/allen-shaw/bigchannel/interceptor/meta"
 	"google.golang.org/grpc"
 )
 
-func StreamClientInterceptor(builder StreamClientInterceptorBuilder) grpc.StreamClientInterceptor {
+func StreamClientInterceptor(builder meta.StreamClientInterceptorBuilder) grpc.StreamClientInterceptor {
 	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
-		meta := NewClientMeta(method, desc, nil)
+		meta := meta.NewClientMeta(method, desc, nil)
 		startTime := time.Now()
 		intcptr, newCtx := builder.Build(ctx, meta)
 		intcptr.BeforeCreateStream()
@@ -26,7 +27,7 @@ type clientStream struct {
 	grpc.ClientStream
 
 	startTime time.Time
-	intcptr   streamClientInterceptor
+	intcptr   meta.StreamClientInterceptor
 }
 
 func (cs *clientStream) SendMsg(m any) error {

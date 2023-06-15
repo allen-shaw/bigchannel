@@ -4,12 +4,13 @@ import (
 	"context"
 	"time"
 
+	"github.com/allen-shaw/bigchannel/interceptor/meta"
 	"google.golang.org/grpc"
 )
 
-func StreamServerInterceptor(builder StreamServerInterceptorBuilder) grpc.StreamServerInterceptor {
+func StreamServerInterceptor(builder meta.StreamServerInterceptorBuilder) grpc.StreamServerInterceptor {
 	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		meta := NewServerMeta(info.FullMethod, info, nil)
+		meta := meta.NewServerMeta(info.FullMethod, info, nil)
 		intcptr, newCtx := builder.Build(ss.Context(), meta)
 		intcptr.BeforeCreateStream(srv, info)
 		err := handler(srv, &serverStream{ServerStream: ss, ctx: newCtx, intcptr: intcptr})
@@ -21,7 +22,7 @@ func StreamServerInterceptor(builder StreamServerInterceptorBuilder) grpc.Stream
 type serverStream struct {
 	grpc.ServerStream
 	ctx     context.Context
-	intcptr streamServerInterceptor
+	intcptr meta.StreamServerInterceptor
 }
 
 func (ss *serverStream) SendMsg(m any) error {

@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/allen-shaw/bigchannel/client/picker"
-	"github.com/allen-shaw/bigchannel/client/resolver"
+	"github.com/allen-shaw/bigchannel/exmaples/client/picker"
+	"github.com/allen-shaw/bigchannel/exmaples/client/resolver"
 	pb "github.com/allen-shaw/bigchannel/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

@@ -4,12 +4,13 @@ import (
 	"context"
 	"time"
 
+	"github.com/allen-shaw/bigchannel/interceptor/meta"
 	"google.golang.org/grpc"
 )
 
-func UnaryClientInterceptor(builder UnaryClientInterceptorBuilder) grpc.UnaryClientInterceptor {
+func UnaryClientInterceptor(builder meta.UnaryClientInterceptorBuilder) grpc.UnaryClientInterceptor {
 	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-		meta := NewClientMeta(method, nil, req)
+		meta := meta.NewClientMeta(method, nil, req)
 		intcptr, newCtx := builder.Build(ctx, meta)
 		startTime := time.Now()
 
