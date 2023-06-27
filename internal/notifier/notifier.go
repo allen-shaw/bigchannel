@@ -34,7 +34,7 @@ func (n *Notifier[T]) Listen(id string) <-chan T {
 		return ch
 	}
 
-	ch = make(chan T)
+	ch = make(chan T, 1)
 	n.cs[id] = ch
 	return ch
 }
