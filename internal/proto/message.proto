@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package proto;
+option go_package = "github.com/allen-shaw/bigchannel/internal/proto";
+
+message Message {
+    bytes message_id = 1;
+    bytes payload = 6;
+}

@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package proto;
+option go_package = "github.com/allen-shaw/bigchannel/internal/proto";
+
+import "message.proto";
+
+message SendRequest {
+    Message message = 1;
+}
+
+message SendResponse {
+    bytes message_id = 1;
+}
+
+message ReceiveRequest {
+    bytes message_id = 1; 
+}
+
+message ReceiveResponse {
+    Message message = 1;
+}
+
+message AckRequest {
+    bytes message_id = 1;
+}
+
+message AckResponse {}
+
+
+service Broker {
+    // producer 
+    rpc Send(stream SendRequest) returns (stream SendResponse) {}
+    // consumer
+    rpc Receive(stream ReceiveRequest) returns (stream ReceiveResponse) {} 
+    rpc Ack(AckRequest) returns (AckResponse) {}
+}
