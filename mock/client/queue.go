@@ -2,6 +2,8 @@ package main
 
 import (
 	"sync"
+
+	pb "github.com/allen-shaw/bigchannel/internal/proto"
 )
 
 type Queue struct {
@@ -77,4 +79,60 @@ func (q *Queue) Top() *sendingMsg {
 	}
 
 	return q.data[0]
+}
+
+func (q *Queue) Size() int {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	return len(q.data)
+}
+
+func (q *Queue) Cap() int {
+	return q.cap
+}
+
+type MsgQueue struct {
+	cap  int
+	mu   sync.RWMutex
+	data []*pb.Message
+}
+
+func newMsgQueue(cap int) *MsgQueue {
+	q := &MsgQueue{cap: cap}
+	q.data = make([]*pb.Message, 0, cap)
+	return q
+}
+
+func (q *MsgQueue) Size() int {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	return len(q.data)
+}
+
+func (q *MsgQueue) Cap() int {
+	return q.cap
+}
+func (q *MsgQueue) Push(msgs ...*pb.Message) {
+	if len(msgs) == 0 {
+		return
+	}
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.data = append(q.data, msgs...)
+}
+
+func (q *MsgQueue) Pop() *pb.Message {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if len(q.data) == 0 {
+		return nil
+	}
+
+	first := q.data[0]
+	q.data = q.data[1:]
+	return first
 }

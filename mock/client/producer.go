@@ -212,9 +212,13 @@ func (ss *sendStream) sendloop() {
 			log.Printf("ss stop, with pctx done: %v \n", ss.ctx.Err())
 			return
 		case <-ctx.Done():
-			log.Printf("ss stop, with stream ctx done: %v \n", ss.ctx.Err())
+			log.Printf("ss stop, with stream ctx done: %v \n", ctx.Err())
 			return
-		case req := <-ss.reqC: // FIXME: 这里要监听ok
+		case req, ok := <-ss.reqC:
+			if !ok {
+				log.Printf("ss stop, reqC closed")
+				return
+			}
 			err := ss.stream.Send(req)
 			if err != nil {
 				// 这里合理是要处理重连的
@@ -233,7 +237,7 @@ func (ss *sendStream) recvloop() {
 			log.Printf("ss stop, with pctx ctx done: %v \n", ss.ctx.Err())
 			return
 		case <-ctx.Done():
-			log.Printf("ss stop, with stream ctx done: %v \n", ss.ctx.Err())
+			log.Printf("ss stop, with stream ctx done: %v \n", ctx.Err())
 			return
 		default:
 		}
@@ -249,7 +253,7 @@ func (ss *sendStream) recvloop() {
 			log.Printf("ss stop, with pctx ctx done: %v \n", ss.ctx.Err())
 			return
 		case <-ctx.Done():
-			log.Printf("ss stop, with stream ctx done: %v \n", ss.ctx.Err())
+			log.Printf("ss stop, with stream ctx done: %v \n", ctx.Err())
 			return
 		case ss.respC <- resp:
 		}
