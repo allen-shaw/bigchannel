@@ -187,8 +187,8 @@ func (p *Producer) retryloop() {
 }
 
 // AsyncSend
-func (p *Producer) Send(msg *pb.Message) error {
-	p.sendingQ.Push(newSendingMsg(msg))
+func (p *Producer) Send(msg *sendingMsg) error {
+	p.sendingQ.Push(msg)
 	return nil
 }
 
@@ -269,6 +269,21 @@ const (
 	StatusFail
 )
 
+func (s Status) String() string {
+	switch s {
+	case StatusInit:
+		return "init"
+	case StatusPendding:
+		return "pending"
+	case StatusSucc:
+		return "success"
+	case StatusFail:
+		return "fail"
+	default:
+		return "unknown"
+	}
+}
+
 // 应该叫ProduceMessage
 type sendingMsg struct {
 	m             *pb.Message
@@ -277,6 +292,13 @@ type sendingMsg struct {
 	retryTimes    int
 	status        Status
 	waitC         chan struct{}
+}
+
+func NewProduceMessage(payload []byte) *sendingMsg {
+	m := &pb.Message{
+		Payload: payload,
+	}
+	return newSendingMsg(m)
 }
 
 func newSendingMsg(m *pb.Message) *sendingMsg {

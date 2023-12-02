@@ -157,6 +157,9 @@ func (s *Storage) AppendMessage(msgs ...*pb.Message) error {
 }
 
 func (s *Storage) Index(msgID []byte) int {
+	if len(msgID) == 0 {
+		return 0
+	}
 	// FIXME: 这里直接遍历，实际应该加map索引，或者二分查找
 	s.mu.Lock()
 	defer s.mu.Unlock()
