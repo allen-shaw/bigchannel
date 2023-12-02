@@ -5,5 +5,11 @@ option go_package = "github.com/allen-shaw/bigchannel/internal/proto";
 
 message Message {
     bytes message_id = 1;
+    SequenceNo seq_no = 3;
     bytes payload = 6;
+}
+
+message SequenceNo {
+    bytes producer_id = 1;
+    uint64 seq_no = 2;
 }
