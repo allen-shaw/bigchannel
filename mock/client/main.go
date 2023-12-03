@@ -38,7 +38,7 @@ func startProducer(c *Client) {
 	}
 	log.Println("new producer success")
 
-	for i := 0; i < 30; i++ {
+	for i := 0; i < 10; i++ {
 		payload := []byte(fmt.Sprintf("hello - %v", i))
 		msg := NewProduceMessage(payload)
 
@@ -46,10 +46,12 @@ func startProducer(c *Client) {
 		if err != nil {
 			panic(err)
 		}
-		log.Println("producer send msg success")
 
 		s := msg.Get()
-		log.Printf("msg send status: %v", s.String())
+		if s != StatusSucc {
+			log.Fatalf("invalid status %v: %v", s.String(), s)
+		}
+		log.Println("producer send msg success", i)
 		time.Sleep(1 * time.Second)
 	}
 }

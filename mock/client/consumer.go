@@ -137,7 +137,7 @@ func (c *Consumer) sendloop() {
 				break
 			}
 
-			// log.Printf("recvQ pop %v", msg)
+			log.Printf("recvQ pop %v", msg)
 			select {
 			case <-c.ctx.Done():
 				log.Printf("consumer sendloop stop: %v \n", c.ctx.Err())
@@ -163,6 +163,7 @@ func (c *Consumer) recvloop() {
 			if len(resp.Messages) == 0 {
 				continue
 			}
+			log.Printf("[Consumer.recvloop]|recv:%v", resp.Messages)
 			lstID := c.recvQ.Push(resp.Messages...)
 			c.cursor = lstID
 		}

@@ -101,7 +101,7 @@ func (b *Broker) Send(stream pb.Broker_SendServer) error {
 			log.Printf("[Broker.Send]|error %v", err)
 			return fmt.Errorf("send stream recv: %w", err)
 		}
-		log.Printf("[Broker.Send]|%v", req.String())
+		// log.Printf("[Broker.Send]|%v", req.String())
 
 		seqno, err := b.r.recvMessage(req.Messages...)
 		if err != nil {
@@ -204,6 +204,10 @@ func (s *Storage) scanFron(startIndex int, size int32) ([]*pb.Message, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if startIndex > len(s.data) {
+		return nil, nil
+	}
+
 	// log.Printf("[Storage.scanFrom]|data: %v, size: %v", s.data, len(s.data))
 	endIndex := startIndex + int(size)
 	if endIndex > len(s.data) {
@@ -241,7 +245,7 @@ func (d *Dispatcher) pullMessages(start []byte, size int32) ([]*pb.Message, erro
 	}
 
 	// 然后获取size个数据，然后返回
-	msgs, err := d.s.ScanFrom(startIndex, size)
+	msgs, err := d.s.ScanFrom(startIndex+1, size)
 	if err != nil {
 		return nil, fmt.Errorf("dispatcher scan: %w", err)
 	}

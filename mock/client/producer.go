@@ -258,7 +258,7 @@ func (ss *sendStream) recvloop() {
 			log.Printf("stream recv: %v \n", err)
 			return
 		}
-		log.Printf("[SendStream]|resp:%v", resp.String())
+		// log.Printf("[SendStream]|resp:%v", resp.String())
 
 		select {
 		case <-ss.ctx.Done():
