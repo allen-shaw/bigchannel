@@ -89,10 +89,14 @@ func (c *Consumer) init() error {
 func (c *Consumer) run() {
 	go c.sendloop()
 	go c.recvloop()
-	go c.prefetch()
+	// go c.prefetch()
 }
 
 func (c *Consumer) Receive(ctx context.Context) (*pb.Message, error) {
+	if c.recvQ.Size()*2 < c.recvQ.Cap() {
+		c.prefetch()
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -165,7 +169,7 @@ func (c *Consumer) recvloop() {
 			}
 			log.Printf("[Consumer.recvloop]|recv:%v", resp.Messages)
 			lstID := c.recvQ.Push(resp.Messages...)
-			log.Printf("[RecvQ Return]|%v", binary.LittleEndian.Uint64(lstID))
+			log.Printf("[RecvQ Return]|lastID: %v", binary.LittleEndian.Uint64(lstID))
 			c.SetCursor(lstID)
 			<-c.fetchRespC
 		}
@@ -181,21 +185,17 @@ func (c *Consumer) recvloop() {
 // }
 
 func (c *Consumer) prefetch() {
-	// ticker := time.NewTicker(5 * time.Second)
-	// defer ticker.Stop()
-	for {
-		select {
-		case <-c.ctx.Done():
-			return
-		case c.fetchRespC <- struct{}{}:
-			c.fetch()
-			// case <-ticker.C:
-			// 	c.fetch()
-		}
+	select {
+	case <-c.ctx.Done():
+		return
+	case c.fetchRespC <- struct{}{}:
+		c.fetch()
+	default:
 	}
 }
 
 func (c *Consumer) fetch() {
+	log.Println("[Consumer.fetch]")
 	c.fmu.Lock()
 	defer c.fmu.Unlock()
 
@@ -204,10 +204,6 @@ func (c *Consumer) fetch() {
 	size := c.recvQ.Size()
 
 	log.Printf("[Consumer.fetch]|cap: %v, size: %v", cap, size)
-	if size*2 >= cap {
-		return
-	}
-
 	req := &pb.ReceiveRequest{
 		MessageId: c.Cursor(),
 		Size:      int32(cap - size),

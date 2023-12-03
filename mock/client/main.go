@@ -23,8 +23,11 @@ func main() {
 	}
 	log.Println("new client succ")
 
-	go startProducer(client)
+	/*go*/
+	startProducer(client)
 	go startConsumer(client)
+
+	time.Sleep(5 * time.Second)
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGKILL)
@@ -42,9 +45,10 @@ func startProducer(c *Client) {
 		panic(err)
 	}
 	log.Println("new producer success")
+	now := time.Now().Format("15:04:05")
 
 	for i := 0; i < 10; i++ {
-		payload := []byte(fmt.Sprintf("hello - %v", i))
+		payload := []byte(fmt.Sprintf("hello-%v-%v", now, i))
 		msg := NewProduceMessage(payload)
 
 		err = producer.Send(msg)
@@ -60,6 +64,7 @@ func startProducer(c *Client) {
 		log.Println("producer send msg success", i)
 		time.Sleep(1 * time.Second)
 	}
+
 }
 
 func startConsumer(c *Client) {
