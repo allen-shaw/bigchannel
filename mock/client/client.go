@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	pb "github.com/allen-shaw/bigchannel/internal/proto"
 	"google.golang.org/grpc"
@@ -20,7 +21,10 @@ type Client struct {
 func NewClient(addr string) (*Client, error) {
 	ctx, cancel := context.WithCancelCause(context.Background())
 	opts := prepareOpts()
-	conn, err := grpc.DialContext(ctx, addr, opts...)
+
+	cctx, ccancel := context.WithTimeout(ctx, 2*time.Second)
+	defer ccancel()
+	conn, err := grpc.DialContext(cctx, addr, opts...)
 	if err != nil {
 		err = fmt.Errorf("dial server: %w", err)
 		defer cancel(err)

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync/atomic"
 	"time"
 
 	pb "github.com/allen-shaw/bigchannel/internal/proto"
@@ -15,6 +16,7 @@ type Producer struct {
 	ctx    context.Context
 	cancel context.CancelCauseFunc
 	c      *Client
+	seqno  atomic.Uint64
 	stream *sendStream
 
 	pendingQ *Queue
@@ -188,8 +190,17 @@ func (p *Producer) retryloop() {
 
 // AsyncSend
 func (p *Producer) Send(msg *sendingMsg) error {
+	msg.m.SeqNo = p.newSeqno()
 	p.sendingQ.Push(msg)
 	return nil
+}
+
+func (p *Producer) newSeqno() *pb.SequenceNo {
+	sn := &pb.SequenceNo{
+		ProducerId: p.id,
+		SeqNo:      p.seqno.Add(1),
+	}
+	return sn
 }
 
 type sendStream struct {
@@ -247,6 +258,7 @@ func (ss *sendStream) recvloop() {
 			log.Printf("stream recv: %v \n", err)
 			return
 		}
+		log.Printf("[SendStream]|resp:%v", resp.String())
 
 		select {
 		case <-ss.ctx.Done():

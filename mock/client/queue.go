@@ -114,20 +114,22 @@ func (q *MsgQueue) Size() int {
 func (q *MsgQueue) Cap() int {
 	return q.cap
 }
-func (q *MsgQueue) Push(msgs ...*pb.Message) {
+func (q *MsgQueue) Push(msgs ...*pb.Message) []byte {
 	if len(msgs) == 0 {
-		return
+		panic("in megs len 0")
 	}
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	q.data = append(q.data, msgs...)
+	return q.data[len(q.data)-1].MessageId
 }
 
 func (q *MsgQueue) Pop() *pb.Message {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
+	// log.Printf("[MsgQueue.Pop]|data:%v", q.data)
 	if len(q.data) == 0 {
 		return nil
 	}

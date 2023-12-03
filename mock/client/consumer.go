@@ -29,6 +29,8 @@ type Consumer struct {
 	fmu   sync.RWMutex // fetchMutex
 	msgC  chan *pb.Message
 	recvQ *MsgQueue // 预拉取缓存
+
+	lastPreFetchTime time.Time
 }
 
 func NewConsumer(c *Client) (*Consumer, error) {
@@ -135,6 +137,7 @@ func (c *Consumer) sendloop() {
 				break
 			}
 
+			// log.Printf("recvQ pop %v", msg)
 			select {
 			case <-c.ctx.Done():
 				log.Printf("consumer sendloop stop: %v \n", c.ctx.Err())
@@ -154,16 +157,24 @@ func (c *Consumer) recvloop() {
 			return
 		case resp, ok := <-c.respC:
 			if !ok {
-				log.Printf("consumer recvloop stop: %v \n", fmt.Errorf("respC closed"))
+				// log.Printf("consumer recvloop stop: %v \n", fmt.Errorf("respC closed"))
 				return
 			}
-			c.recvQ.Push(resp.Messages...)
+			if len(resp.Messages) == 0 {
+				continue
+			}
+			lstID := c.recvQ.Push(resp.Messages...)
+			c.cursor = lstID
 		}
 	}
 }
 
 func (c *Consumer) prefetchAsync() {
+	if time.Since(c.lastPreFetchTime) < 3*time.Second {
+		return
+	}
 	go c.prefetch()
+	c.lastPreFetchTime = time.Now()
 }
 
 func (c *Consumer) prefetch() {

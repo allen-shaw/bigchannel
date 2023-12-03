@@ -7,21 +7,28 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
+var recvMsgs []string
+
 func main() {
-	addr := "127.0.0.1:8080"
+	addr := "127.0.0.1:18088"
 	client, err := NewClient(addr)
 	if err != nil {
 		panic(err)
 	}
+	log.Println("new client succ")
 
-	startProducer(client)
-	startConsumer(client)
+	go startProducer(client)
+	go startConsumer(client)
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGKILL)
 	<-sig
+
+	fmt.Println("recv msgs:")
+	fmt.Println(recvMsgs)
 }
 
 func startProducer(c *Client) {
@@ -29,18 +36,22 @@ func startProducer(c *Client) {
 	if err != nil {
 		panic(err)
 	}
+	log.Println("new producer success")
 
-	i := 0
-	payload := []byte(fmt.Sprintf("hello - %v", i))
-	msg := NewProduceMessage(payload)
+	for i := 0; i < 30; i++ {
+		payload := []byte(fmt.Sprintf("hello - %v", i))
+		msg := NewProduceMessage(payload)
 
-	err = producer.Send(msg)
-	if err != nil {
-		panic(err)
+		err = producer.Send(msg)
+		if err != nil {
+			panic(err)
+		}
+		log.Println("producer send msg success")
+
+		s := msg.Get()
+		log.Printf("msg send status: %v", s.String())
+		time.Sleep(1 * time.Second)
 	}
-
-	s := msg.Get()
-	log.Printf("msg send status: %v", s.String())
 }
 
 func startConsumer(c *Client) {
@@ -55,7 +66,12 @@ func startConsumer(c *Client) {
 		if err != nil {
 			panic(err)
 		}
-		log.Printf("recv msg: %v", msg.String())
+		if msg == nil {
+			log.Printf("recv nil: %v", msg)
+			panic("msg is nil")
+		}
+		log.Printf("recv msg: %v", string(msg.Payload))
+		recvMsgs = append(recvMsgs, string(msg.Payload))
 		err = consumer.Ack(ctx, msg)
 		if err != nil {
 			panic(err)

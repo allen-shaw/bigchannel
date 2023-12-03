@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -36,6 +37,8 @@ func NewBroker(addr string) *Broker {
 
 // Ack implements pb.BrokerServer.
 func (b *Broker) Ack(ctx context.Context, req *pb.AckRequest) (*pb.AckResponse, error) {
+	log.Printf("[Broker.Ack]|%v", req.String())
+
 	err := b.sub.Ack(req.MessageId)
 	if err != nil {
 		return nil, fmt.Errorf("sub ack: %w", err)
@@ -45,6 +48,8 @@ func (b *Broker) Ack(ctx context.Context, req *pb.AckRequest) (*pb.AckResponse, 
 
 // Receive implements pb.BrokerServer.
 func (b *Broker) Receive(stream pb.Broker_ReceiveServer) error {
+	log.Printf("[Broker.Receive]")
+
 	ctx := stream.Context()
 
 	for {
@@ -56,8 +61,10 @@ func (b *Broker) Receive(stream pb.Broker_ReceiveServer) error {
 
 		req, err := stream.Recv()
 		if err != nil {
+			log.Printf("[Broker.Receive]|error %v", err)
 			return fmt.Errorf("recv stream recv: %w", err)
 		}
+		log.Printf("[Broker.Receive]|%v", req.String())
 
 		// 这个接口本质上拉消息，所以调用pullMessage接口
 		// pullMessage 是一个block接口，如果没有数据，会阻塞指导有数据
@@ -79,6 +86,7 @@ func (b *Broker) Receive(stream pb.Broker_ReceiveServer) error {
 
 // Send implements pb.BrokerServer.
 func (b *Broker) Send(stream pb.Broker_SendServer) error {
+	log.Printf("[Broker.Send]")
 	ctx := stream.Context()
 
 	for {
@@ -90,8 +98,10 @@ func (b *Broker) Send(stream pb.Broker_SendServer) error {
 
 		req, err := stream.Recv()
 		if err != nil {
+			log.Printf("[Broker.Send]|error %v", err)
 			return fmt.Errorf("send stream recv: %w", err)
 		}
+		log.Printf("[Broker.Send]|%v", req.String())
 
 		seqno, err := b.r.recvMessage(req.Messages...)
 		if err != nil {
@@ -123,6 +133,7 @@ func NewReceiver(store *Storage) *Receiver {
 func (r *Receiver) recvMessage(msgs ...*pb.Message) (*pb.SequenceNo, error) {
 	// 生成message id
 	for _, msg := range msgs {
+		msg.MessageId = make([]byte, 8)
 		r.id++
 		binary.LittleEndian.PutUint64(msg.MessageId, r.id)
 	}
@@ -182,6 +193,7 @@ func (s *Storage) ScanFrom(startIndex int, size int32) ([]*pb.Message, error) {
 			return nil, err
 		}
 		if len(msgs) > 0 {
+			// log.Printf("[Storage.ScanFrom]|return msg: %v", msgs)
 			return msgs, nil
 		}
 		time.Sleep(3 * time.Second)
@@ -192,7 +204,12 @@ func (s *Storage) scanFron(startIndex int, size int32) ([]*pb.Message, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	msgs := s.data[startIndex : startIndex+int(size)]
+	// log.Printf("[Storage.scanFrom]|data: %v, size: %v", s.data, len(s.data))
+	endIndex := startIndex + int(size)
+	if endIndex > len(s.data) {
+		endIndex = len(s.data)
+	}
+	msgs := s.data[startIndex:endIndex]
 	return msgs, nil
 }
 

@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	StartBroker(8088)
+	StartBroker(18088)
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGKILL)
 	<-sig
@@ -65,5 +65,3 @@ func StartBroker(port int32) *RPCServer {
 	fmt.Printf("broker start at: %v \n", port)
 	return s
 }
-
-
