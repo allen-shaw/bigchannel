@@ -32,8 +32,8 @@ type Consumer struct {
 	msgC  chan *pb.Message
 	recvQ *MsgQueue // 预拉取缓存
 
-	// fetchRespC       chan struct{}
-	lastPreFetchTime time.Time
+	fetchRespC chan struct{}
+	// lastPreFetchTime time.Time
 }
 
 func NewConsumer(c *Client) (*Consumer, error) {
@@ -41,15 +41,15 @@ func NewConsumer(c *Client) (*Consumer, error) {
 	id := UUID()
 
 	co := &Consumer{
-		id:     id,
-		ctx:    ctx,
-		cancel: cancel,
-		c:      c,
-		recvQ:  newMsgQueue(16),
-		msgC:   make(chan *pb.Message),
-		reqC:   make(chan *pb.ReceiveRequest, 1),
-		respC:  make(chan *pb.ReceiveResponse, 1),
-		// fetchRespC: make(chan struct{}, 1),
+		id:         id,
+		ctx:        ctx,
+		cancel:     cancel,
+		c:          c,
+		recvQ:      newMsgQueue(16),
+		msgC:       make(chan *pb.Message),
+		reqC:       make(chan *pb.ReceiveRequest, 1),
+		respC:      make(chan *pb.ReceiveResponse, 1),
+		fetchRespC: make(chan struct{}, 1),
 	}
 
 	err := co.init()
@@ -167,7 +167,7 @@ func (c *Consumer) recvloop() {
 			lstID := c.recvQ.Push(resp.Messages...)
 			log.Printf("[RecvQ Return]|%v", binary.LittleEndian.Uint64(lstID))
 			c.SetCursor(lstID)
-			// <-c.fetchRespC
+			<-c.fetchRespC
 		}
 	}
 }
@@ -181,16 +181,16 @@ func (c *Consumer) recvloop() {
 // }
 
 func (c *Consumer) prefetch() {
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
+	// ticker := time.NewTicker(5 * time.Second)
+	// defer ticker.Stop()
 	for {
 		select {
 		case <-c.ctx.Done():
 			return
-		// case c.fetchRespC <- struct{}{}:
-		// 	c.fetch()
-		case <-ticker.C:
+		case c.fetchRespC <- struct{}{}:
 			c.fetch()
+			// case <-ticker.C:
+			// 	c.fetch()
 		}
 	}
 }
