@@ -37,15 +37,13 @@ func NewBroker(addr string) *Broker {
 
 // Ack implements pb.BrokerServer.
 func (b *Broker) Ack(ctx context.Context, req *pb.AckRequest) (*pb.AckResponse, error) {
+	log.Printf("[Broker.Ack]|%v", req.String())
+
+	err := b.sub.Ack(req.MessageId)
+	if err != nil {
+		return nil, fmt.Errorf("sub ack: %w", err)
+	}
 	return &pb.AckResponse{}, nil
-
-	// log.Printf("[Broker.Ack]|%v", req.String())
-
-	// err := b.sub.Ack(req.MessageId)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("sub ack: %w", err)
-	// }
-	// return &pb.AckResponse{}, nil
 }
 
 // Receive implements pb.BrokerServer.
