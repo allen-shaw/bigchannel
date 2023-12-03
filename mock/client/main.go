@@ -10,7 +10,10 @@ import (
 	"time"
 )
 
-var recvMsgs []string
+var (
+	sendMsgs []string
+	recvMsgs []string
+)
 
 func main() {
 	addr := "127.0.0.1:18088"
@@ -27,6 +30,8 @@ func main() {
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGKILL)
 	<-sig
 
+	fmt.Println("send msgs:")
+	fmt.Println(sendMsgs)
 	fmt.Println("recv msgs:")
 	fmt.Println(recvMsgs)
 }
@@ -46,6 +51,7 @@ func startProducer(c *Client) {
 		if err != nil {
 			panic(err)
 		}
+		sendMsgs = append(sendMsgs, string(msg.m.Payload))
 
 		s := msg.Get()
 		if s != StatusSucc {

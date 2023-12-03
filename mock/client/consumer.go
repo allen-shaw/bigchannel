@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"errors"
@@ -24,12 +26,13 @@ type Consumer struct {
 	respC chan *pb.ReceiveResponse
 
 	//
-	cursor []byte // 记录拉取的最新的messageID
+	cursor atomic.Value //  []byte // 记录拉取的最新的messageID
 	//
 	fmu   sync.RWMutex // fetchMutex
 	msgC  chan *pb.Message
 	recvQ *MsgQueue // 预拉取缓存
 
+	// fetchRespC       chan struct{}
 	lastPreFetchTime time.Time
 }
 
@@ -42,10 +45,11 @@ func NewConsumer(c *Client) (*Consumer, error) {
 		ctx:    ctx,
 		cancel: cancel,
 		c:      c,
-		recvQ:  newMsgQueue(64),
+		recvQ:  newMsgQueue(16),
 		msgC:   make(chan *pb.Message),
 		reqC:   make(chan *pb.ReceiveRequest, 1),
 		respC:  make(chan *pb.ReceiveResponse, 1),
+		// fetchRespC: make(chan struct{}, 1),
 	}
 
 	err := co.init()
@@ -85,14 +89,10 @@ func (c *Consumer) init() error {
 func (c *Consumer) run() {
 	go c.sendloop()
 	go c.recvloop()
+	go c.prefetch()
 }
 
 func (c *Consumer) Receive(ctx context.Context) (*pb.Message, error) {
-	// 如果recvQ少于1/2触发一次预拉取（异步）
-	if c.recvQ.Size()*2 < c.recvQ.Cap() {
-		c.prefetchAsync()
-	}
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -165,20 +165,37 @@ func (c *Consumer) recvloop() {
 			}
 			log.Printf("[Consumer.recvloop]|recv:%v", resp.Messages)
 			lstID := c.recvQ.Push(resp.Messages...)
-			c.cursor = lstID
+			log.Printf("[RecvQ Return]|%v", binary.LittleEndian.Uint64(lstID))
+			c.SetCursor(lstID)
+			// <-c.fetchRespC
 		}
 	}
 }
 
-func (c *Consumer) prefetchAsync() {
-	if time.Since(c.lastPreFetchTime) < 3*time.Second {
-		return
-	}
-	go c.prefetch()
-	c.lastPreFetchTime = time.Now()
-}
+// func (c *Consumer) prefetchAsync() {
+// 	if time.Since(c.lastPreFetchTime) < 3*time.Second {
+// 		return
+// 	}
+// 	go c.prefetch()
+// 	c.lastPreFetchTime = time.Now()
+// }
 
 func (c *Consumer) prefetch() {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-c.ctx.Done():
+			return
+		// case c.fetchRespC <- struct{}{}:
+		// 	c.fetch()
+		case <-ticker.C:
+			c.fetch()
+		}
+	}
+}
+
+func (c *Consumer) fetch() {
 	c.fmu.Lock()
 	defer c.fmu.Unlock()
 
@@ -186,18 +203,32 @@ func (c *Consumer) prefetch() {
 	cap := c.recvQ.Cap()
 	size := c.recvQ.Size()
 
+	log.Printf("[Consumer.fetch]|cap: %v, size: %v", cap, size)
 	if size*2 >= cap {
 		return
 	}
 
 	req := &pb.ReceiveRequest{
-		MessageId: c.cursor,
+		MessageId: c.Cursor(),
 		Size:      int32(cap - size),
 	}
 	select {
 	case c.reqC <- req:
+		log.Printf("[Consumer.fetch]send request: %v", req.String())
 	default:
 	}
+}
+
+func (c *Consumer) Cursor() []byte {
+	cur := c.cursor.Load()
+	if cur == nil {
+		return nil
+	}
+	return cur.([]byte)
+}
+
+func (c *Consumer) SetCursor(cursor []byte) {
+	c.cursor.Store(cursor)
 }
 
 func (c *Consumer) Close() {

@@ -37,13 +37,15 @@ func NewBroker(addr string) *Broker {
 
 // Ack implements pb.BrokerServer.
 func (b *Broker) Ack(ctx context.Context, req *pb.AckRequest) (*pb.AckResponse, error) {
-	log.Printf("[Broker.Ack]|%v", req.String())
-
-	err := b.sub.Ack(req.MessageId)
-	if err != nil {
-		return nil, fmt.Errorf("sub ack: %w", err)
-	}
 	return &pb.AckResponse{}, nil
+
+	// log.Printf("[Broker.Ack]|%v", req.String())
+
+	// err := b.sub.Ack(req.MessageId)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("sub ack: %w", err)
+	// }
+	// return &pb.AckResponse{}, nil
 }
 
 // Receive implements pb.BrokerServer.
@@ -208,7 +210,7 @@ func (s *Storage) scanFron(startIndex int, size int32) ([]*pb.Message, error) {
 		return nil, nil
 	}
 
-	// log.Printf("[Storage.scanFrom]|data: %v, size: %v", s.data, len(s.data))
+	log.Printf("[Storage.scanFrom]|startindex: %v|data: %v", startIndex, s.data)
 	endIndex := startIndex + int(size)
 	if endIndex > len(s.data) {
 		endIndex = len(s.data)
@@ -239,9 +241,15 @@ func NewDispatcher(s *Storage) *Dispatcher {
 
 func (d *Dispatcher) pullMessages(start []byte, size int32) ([]*pb.Message, error) {
 	// 找到start 的index, 如果start为nil，则startIndex = 0
-	startIndex := d.s.Index(start)
-	if startIndex == -1 {
-		return nil, errMsgIDNotFound
+	log.Printf("[Dispatcher.pullMessages]|start: %v", start)
+
+	startIndex := -1
+	if len(start) != 0 {
+		startIndex = d.s.Index(start)
+		log.Printf("[xxxxx]|start:%v", startIndex)
+		if startIndex == -1 {
+			return nil, errMsgIDNotFound
+		}
 	}
 
 	// 然后获取size个数据，然后返回
